@@ -1,0 +1,72 @@
+# Logs
+logs/
+*.log
+*.log.*
+debug/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Build outputs (additive; language-specific templates below cover the rest)
+dist/
+out/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor directories
+.vscode/
+.idea/
+*.iws
+*.iml
+*.ipr
+.settings/
+.classpath
+.project
+*.launch
+inspectionProfiles/
+
+
+# java
+# Java
+*.class
+*.jar
+*.jar.gz
+libs/
+
+# Build tools
+.gradle/
+build/
+
+# Environment
+*.pid
+*.pid.lock
+hs_err_pid*.log
+
+# IDE - IntelliJ
+# See global JetBrains gitignore.
+
+# OS
+*.o
+
+
+# gradle
+# Gradle
+.gradle/
+build/
+out/
+
+# Gradle wrapper
+gradle/wrapper/gradle-wrapper.jar
+
+# Logs
+*.log
+
+# IDE
+.idea/
+*.iws
+*.iml
+*.ipr
