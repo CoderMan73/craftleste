@@ -36,6 +36,9 @@ inspectionProfiles/
 *.jar
 *.jar.gz
 libs/
+# ...but the Gradle wrapper jar is the one jar a clone cannot work without: it is the reproducible
+# entry point, it is not a build artifact, and it pins the Gradle version.
+!gradle/wrapper/gradle-wrapper.jar
 
 # Build tools
 .gradle/
@@ -60,7 +63,11 @@ build/
 out/
 
 # Gradle wrapper
-gradle/wrapper/gradle-wrapper.jar
+# The wrapper jar itself is committed on purpose: it is the only entry point a fresh clone has, and
+# ignoring it makes every CI run and every fresh checkout fail the same way.
+
+# Loom dev run output
+run/
 
 # Logs
 *.log
@@ -70,3 +77,6 @@ gradle/wrapper/gradle-wrapper.jar
 *.iws
 *.iml
 *.ipr
+
+# Kilo (local process/scratch dir)
+.kilo/

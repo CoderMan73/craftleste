@@ -1,0 +1,28 @@
+{
+	"schemaVersion": 1,
+	"id": "craftleste",
+	"version": "${version}",
+	"name": "Craftleste",
+	"description": "Run the genuine Celeste (2018) inside Minecraft Java Edition via an embedded Chromium browser (Rinku) and the Webleste wasm port.",
+	"authors": [
+		"craftleste"
+	],
+	"license": "GPL-3.0",
+	"environment": "client",
+	"entrypoints": {
+		"main": [
+			"com.craftleste.CraftlesteMod"
+		],
+		"client": [
+			"com.craftleste.client.CraftlesteClient"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.2",
+		"java": ">=25",
+		"fabric-api": "*",
+		"rinku": "*",
+		"cloth-config": "*"
+	}
+}

@@ -23,11 +23,13 @@ each milestone against PLAN.md (tracked in the tracking workspace, not in this r
 ## Key Commands
 
 ```bash
-./gradlew genIntelliJ   # Generate IDE run configs (Java/Fabric/Gradle layout)
 ./gradlew build         # Build the project
 ./gradlew runClient     # Run locally
 ./gradlew check         # Run tests
 ```
+
+IDE config: Loom 1.18 dropped `genIntelliJ`; the equivalent is `ideaSyncTask` (auto-triggered on
+IDE import). The rest of this file's task names are current.
 
 ## Dev environment (Windows)
 
