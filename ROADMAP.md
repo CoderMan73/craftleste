@@ -21,8 +21,8 @@
 
 ## Current Objectives
 
-- [ ] Scaffolding and dependency integration
-- [ ] Webleste runtime acquisition, local serving, asset intake
+- [x] Scaffolding and dependency integration
+- [x] Webleste runtime acquisition, local serving, asset intake
 - [ ] In-game screen surface
 - [ ] Controls, UX, config, and fidelity
 - [ ] Saves, packaging, and guardrails

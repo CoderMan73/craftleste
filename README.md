@@ -22,12 +22,12 @@ Players need their own copy of Celeste 1.4.0.0 (FNA build) — no game code, ass
 
 1. Install Minecraft 26.2 with Fabric Loader 0.19.5 and fabric-api 0.161.0+26.2.
 2. Drop `craftleste.jar` (and the prerequisite Cloth Config) into the `mods/` folder.
-3. On first run, point the mod at your Celeste executable or its `Content` folder; the Webleste runtime is fetched once from its official origin.
+3. In game, run `/craftleste load` with the path to your Celeste executable or its `Content` folder; the Webleste runtime is fetched once from its official origin with `/craftleste fetch`.
 
 Building from source:
 
 ```bash
-git clone https://github.com/CoderMan73/craftleste
+git clone <this repository>
 cd craftleste
 ./gradlew build   # jar lands in build/libs
 ```
@@ -35,8 +35,8 @@ cd craftleste
 ## Usage
 
 1. Launch the Minecraft client with the mod installed.
-2. Open the craftleste screen with its keybind (configurable via Cloth Config / Mod Menu).
-3. On first launch, supply your Celeste files; the game runs on the flat, framed GUI window with Minecraft mouse/keyboard input mapped into it.
+2. Open the craftleste screen with its keybind (default `C`, listed under "Craftleste" in the vanilla Controls screen); a Cloth Config / Mod Menu settings screen arrives in a later milestone.
+3. On first launch, supply your Celeste files with `/craftleste load`; the game runs on the flat, framed GUI window with Minecraft mouse/keyboard input mapped into it.
 
 Development and contributing setup lives in [CONTRIBUTING.md](CONTRIBUTING.md); the milestone plan lives in [ROADMAP.md](ROADMAP.md).
 
