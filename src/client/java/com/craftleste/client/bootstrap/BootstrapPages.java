@@ -271,6 +271,61 @@ public final class BootstrapPages {
 			</html>
 			""";
 
+	public static final String GAMEPAD_PATCH_JS = """
+		(function() {
+		  var GAMEPAD_MAPPINGS = {
+		    '8BitDo Ultimate 2C': '03000000c82d00001d30000000000000,8BitDo Ultimate 2C,a:b0,b:b1,back:b10,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b12,leftshoulder:b6,leftstick:b13,lefttrigger:b8,leftx:a0,lefty:a1,paddle1:b5,paddle2:b2,rightshoulder:b7,rightstick:b14,righttrigger:b9,rightx:a3,righty:a4,start:b11,x:b3,y:b4,platform:Windows'
+		  };
+		  var KNOWN_UNMAPPED = Object.keys(GAMEPAD_MAPPINGS);
+
+		  // Secondary mechanism: patch navigator.getGamepads to report mapping:"standard"
+		  // for known unmapped controllers. Primary mechanism is SDL_GAMECONTROLLERCONFIG
+		  // env var, injected via the server into the emscripten ENV object.
+		  var origGetGamepads = navigator.getGamepads.bind(navigator);
+		  navigator.getGamepads = function() {
+		    var pads = origGetGamepads();
+		    var result = [];
+		    for (var i = 0; i < pads.length; i++) {
+		      var pad = pads[i];
+		      if (pad && pad.mapping === '' && pad.id) {
+		        var isKnown = KNOWN_UNMAPPED.some(function(name) { return pad.id.indexOf(name) >= 0; });
+		        if (isKnown) {
+		          result.push({
+		            id: pad.id,
+		            index: pad.index,
+		            connected: pad.connected,
+		            timestamp: pad.timestamp,
+		            mapping: 'standard',
+		            axes: pad.axes,
+		            buttons: pad.buttons,
+		          });
+		          console.log('[craftleste gamepad] wrapped ' + pad.id + ' with mapping:standard');
+		          continue;
+		        }
+		      }
+		      result.push(pad);
+		    }
+		    return result;
+		  };
+		  console.log('[craftleste gamepad] navigator.getGamepads patched for known unmapped controllers');
+		})();
+		""";
+
+	/**
+	 * The SDL2 controller mapping string for the 8BitDo Ultimate 2C (Vendor: 2dc8, Product: 301d).
+	 * This is injected into the emscripten runtime's ENV object as
+	 * SDL_GAMECONTROLLERCONFIG so that SDL_GameControllerOpen() finds the mapping
+	 * by GUID, since the controller is not in the port's compiled-in SDL2 database.
+	 * Format: vendor_id,product_id,name,button/axis mapping,...,platform:Windows
+	 * GUID for this controller: 03000000c82d00001d30000000000000
+	 */
+	public static final String SDL_GAMECONTROLLER_CONFIG =
+			"03000000c82d00001d30000000000000,8BitDo Ultimate 2C,a:b0,b:b1,back:b10,"
+			+ "dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b12,"
+			+ "leftshoulder:b6,leftstick:b13,lefttrigger:b8,leftx:a0,lefty:a1,"
+			+ "paddle1:b5,paddle2:b2,rightshoulder:b7,rightstick:b14,"
+			+ "righttrigger:b9,rightx:a3,righty:a4,start:b11,x:b3,y:b4,platform:Windows";
+
 	public static final String THREADED_WASM_PROBE_HTML = """
 			<!doctype html>
 			<html>

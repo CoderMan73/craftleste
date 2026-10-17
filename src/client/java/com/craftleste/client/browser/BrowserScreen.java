@@ -296,6 +296,8 @@ public class BrowserScreen extends Screen {
 					reportInspection("layout", result));
 			PageInspector.evaluateAsync(browser, PageInspector.OPFS_INSPECTION, result ->
 					reportInspection("storage", result));
+			PageInspector.evaluateAsync(browser, PageInspector.GAMEPAD_INSPECTION, result ->
+					reportInspection("gamepad", result));
 		} catch (RuntimeException failure) {
 			// The inspector is the only channel while the screen owns every key, so a silent failure
 			// sends the next debugging round in circles: report it where the player can read it.

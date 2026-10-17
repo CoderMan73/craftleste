@@ -17,6 +17,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
@@ -155,14 +156,41 @@ public class CraftlesteHttpServer {
 				return;
 			}
 
-			// Streamed chunked rather than buffered whole: the copy runs several files at once and
-			// the biggest of them is the whole game executable. Com.sun's server takes 0 as "no
-			// fixed length, use chunked encoding".
-			exchange.sendResponseHeaders(200, 0);
+		// The port's index.html gets the gamepad mapping patch injected into <head>
+		// so that known unmapped controllers (e.g. 8BitDo Ultimate 2C) report
+		// mapping:"standard" from navigator.getGamepads().
+		if (path.endsWith("index.html")) {
+			byte[] patched = injectGamepadPatch(file);
+			exchange.getResponseHeaders().set("Content-Length", String.valueOf(patched.length));
+			exchange.sendResponseHeaders(200, patched.length);
 			try (OutputStream body = exchange.getResponseBody()) {
-				Files.copy(file, body);
+				body.write(patched);
 			}
+			return;
 		}
+
+		// The emscripten runtime JS gets SDL_GAMECONTROLLERCONFIG injected into its ENV
+		// object so that SDL2's SDL_GameControllerOpen finds the mapping by GUID for
+		// controllers not in the port's compiled-in database (e.g. 8BitDo Ultimate 2C).
+		if (path.matches(".*_framework/dotnet\\.native.*\\.js")) {
+			byte[] patched = injectEnvVar(file);
+			exchange.getResponseHeaders().set("Content-Encoding", "identity");
+			exchange.getResponseHeaders().set("Content-Length", String.valueOf(patched.length));
+			exchange.sendResponseHeaders(200, patched.length);
+			try (OutputStream body = exchange.getResponseBody()) {
+				body.write(patched);
+			}
+			return;
+		}
+
+		// Streamed chunked rather than buffered whole: the copy runs several files at once and
+		// the biggest of them is the whole game executable. Com.sun's server takes 0 as "no
+		// fixed length, use chunked encoding".
+		exchange.sendResponseHeaders(200, 0);
+		try (OutputStream body = exchange.getResponseBody()) {
+			Files.copy(file, body);
+		}
+	}
 
 		/**
 		 * The player's folder first, the runtime build second. Precedence rather than a name list,
@@ -294,6 +322,43 @@ public class CraftlesteHttpServer {
 		} catch (IOException failure) {
 			return "application/octet-stream";
 		}
+	}
+
+	private static final Pattern HEAD_TAG = Pattern.compile("<head>", Pattern.CASE_INSENSITIVE);
+
+	/** Pattern matching the emscripten ENV declaration: {@code var ENV = {};} */
+	private static final Pattern ENV_DECL = Pattern.compile("var ENV = \\{\\};", Pattern.DOTALL);
+
+	/**
+	 * When serving the port's index.html, injects the gamepad mapping patch into the <head> so it
+	 * runs before the port's own JavaScript. The bootstrap page can't inject it because the
+	 * navigation to index.html starts a fresh script context.
+	 */
+	private static byte[] injectGamepadPatch(Path file) throws IOException {
+		String html = Files.readString(file, StandardCharsets.UTF_8);
+		String patched = HEAD_TAG.matcher(html).replaceAll(
+				"<head><script>" + BootstrapPages.GAMEPAD_PATCH_JS + "</script>");
+		return patched.getBytes(StandardCharsets.UTF_8);
+	}
+
+	/**
+	 * When serving the emscripten runtime JS, injects the SDL_GAMECONTROLLERCONFIG
+	 * environment variable into the ENV object so SDL2 picks up controller mappings
+	 * not present in its compiled-in database. This is the primary gamepad fix:
+	 * the 8BitDo Ultimate 2C (Vendor 2dc8, Product 301d) has GUID
+	 * 03000000c82d00001d30000000000000 which is absent from the port's SDL2 build,
+	 * so SDL_GameControllerOpen fails without this env var.
+	 */
+	private static byte[] injectEnvVar(Path file) throws IOException {
+		String js = Files.readString(file, StandardCharsets.UTF_8);
+		String envValue = "{\"SDL_GAMECONTROLLERCONFIG\":\""
+				+ BootstrapPages.SDL_GAMECONTROLLER_CONFIG.replace("\"", "\\\"")
+				+ "\"}";
+		String patched = ENV_DECL.matcher(js).replaceFirst(
+				"var ENV = " + envValue + ";");
+		LOGGER.info("Injected SDL_GAMECONTROLLERCONFIG ({} comma-separated fields) into emscripten runtime JS",
+				BootstrapPages.SDL_GAMECONTROLLER_CONFIG.split(",").length);
+		return patched.getBytes(StandardCharsets.UTF_8);
 	}
 
 	private static void sendError(HttpExchange exchange, int code, String message) throws IOException {

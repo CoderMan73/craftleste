@@ -317,6 +317,64 @@ real client, carrying a full game.
 The MP3 of it works end to end: Stored path -> intake -> local server -> bootstrap OPFS copy ->
 port patch -> game. Nothing in that chain needs a command or a file dialog any more.
 
+## Gamepad input does not work — root cause found (resolved, 2026-10-16)
+
+Reported 2026-10-15 from a playable session: with a controller plugged in, Celeste does not respond
+to it at all, while the keyboard (arrows, Z, X, C) works. So the failure is isolated to gamepad
+input and not to input forwarding in general — the mapping from Minecraft's screen into the browser
+is proven by the keyboard working.
+
+### Root cause (confirmed at runtime via F8 gamepad inspection)
+
+F8 gamepad inspection (`/craftleste inspect`) reports:
+
+```
+[navigator][gamepad] getGamepads=true | pads=1 [0:8BitDo Ultimate 2C Wired Controller (Vendor: 2dc8 Product: 301d)|buttons=15|axes=10|mapping=]
+```
+
+The controller is detected with correct button count (15) and axes (10), but `mapping=""` (empty).
+
+The port's emscripten SDL2 runtime (`dotnet.native.sadgvw1639.js`) copies `e.mapping` from the
+Gamepad object via `stringToUTF8(e.mapping, eventStruct + 1368, 64)` in `fillGamepadEventData`.
+However, SDL2's `SDL_GameControllerOpen()` does NOT use this `mapping` field for its database lookup.
+Instead, it generates a GUID from the vendor/product IDs (`03000000c82d00001d30000000000000`)
+and looks it up in the SDL2 controller database compiled into the wasm binary.
+
+Searching the wasm binary (`dotnet.native.vwx8rc7ccu.wasm3`) confirms:
+- The 8BitDo GUID `03000000c82d00001d30000000000000` is NOT present in the compiled-in database
+- The controller name `8BitDo Ultimate 2C` is NOT present
+- The `gamecontrollerdb.txt` file (SDL 2.0.6 format, 419 lines) exists at `/libsdl/` but has
+  zero 8BitDo entries and is never loaded (no call to `SDL_GameControllerAddMappingsFromFile`)
+- The upstream database at `mdqinc/SDL_GameControllerDB` has the mapping, but the port's
+  emscripten SDL2 build predates it
+
+The first attempt — patching `navigator.getGamepads` to return `mapping: "standard"` — was
+**incorrect** because SDL2's emscripten backend uses GUID-based database lookup, not the Gamepad
+API `mapping` property, for the GameController API.
+
+### Fix applied
+
+The SDL2 `SDL_GAMECONTROLLERCONFIG` environment variable is the correct mechanism: SDL2 checks it
+during `SDL_Init(SDL_INIT_GAMECONTROLLER)` and loads any mappings it contains. The 8BitDo mapping
+(`03000000c82d00001d30000000000000,8BitDo Ultimate 2C,a:b0,...`) is injected into the emscripten
+runtime's `ENV` object by replacing `var ENV = {};` with
+`var ENV = {"SDL_GAMECONTROLLERCONFIG":"<mapping>"};` when the server serves
+`_framework/dotnet.native.*.js`.
+
+This runs before any C code executes, so `getEnvStrings()` includes the env var in its cached
+output, and SDL2 picks it up at init time.
+
+A secondary `navigator.getGamepads` wrapper (injecting `mapping: "standard"`) is also applied via
+the port's `index.html` for robustness, in case any code path does read the Gamepad API mapping.
+
+### Files changed
+
+- `BootstrapPages.java`: `SDL_GAMECONTROLLER_CONFIG` constant with the 8BitDo mapping string;
+  `GAMEPAD_PATCH_JS` with the `navigator.getGamepads` wrapper
+- `CraftlesteHttpServer.java`: `injectEnvVar()` method replaces `var ENV = {};` in the served
+  emscripten runtime JS with a pre-populated `ENV` containing `SDL_GAMECONTROLLERCONFIG`;
+  `injectGamepadPatch()` injects `GAMEPAD_PATCH_JS` into `index.html`'s `<head>`
+
 ## The inspector's silent syntax error
 
 F8 kept reporting `(no result title within 10s)` while the browser logged

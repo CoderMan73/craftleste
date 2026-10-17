@@ -147,6 +147,31 @@ public final class PageInspector {
 			return out.join(' | ');
 			""";
 
+	/**
+	 * Gamepad presence. Browsers only expose a gamepad after user activation plus a button press,
+	 * so the port seeing zero pads can mean either "not activated yet" or "no gamepad mapping exists".
+	 * Reporting the slots from the live session lets a retry answer which.
+	 */
+	public static final String GAMEPAD_INSPECTION = """
+			const out = [];
+			try {
+			  const has = typeof navigator.getGamepads === 'function';
+			  out.push('getGamepads=' + has);
+			  if (has) {
+			    const pads = navigator.getGamepads();
+			    const connected = [];
+			    for (let i = 0; i < pads.length; i++) {
+			      const p = pads[i];
+			      if (p) connected.push(i + ':' + p.id + '|buttons=' + p.buttons.length + '|axes=' + p.axes.length + '|mapping=' + p.mapping);
+			    }
+			    out.push('pads=' + (connected.length ? connected.length + ' [' + connected.join('|') + ']' : '0 (press a gamepad button then retry)'));
+			  }
+			} catch (error) {
+			  out.push('gamepad probe threw ' + error);
+			}
+			return out.join(' | ');
+			""";
+
 	private static final CefDisplayHandlerAdapter RELAY = new CefDisplayHandlerAdapter() {
 		@Override
 		public void onTitleChange(CefBrowser browser, String title) {
